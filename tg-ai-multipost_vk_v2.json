@@ -133,7 +133,8 @@
           "mode": "name",
           "value": "wf_settings",
           "cachedResultName": "wf_settings"
-        }
+        },
+        "returnAll": true
       },
       "id": "234ff24e-21f5-4aa7-8879-230051186a40",
       "name": "2 Load wf_settings",
@@ -165,7 +166,8 @@
           "mode": "name",
           "value": "wf_prompts",
           "cachedResultName": "wf_prompts"
-        }
+        },
+        "returnAll": true
       },
       "id": "be45aa20-bdfa-43cc-aee8-69a2c28124dc",
       "name": "2.2 Load wf_prompts",
@@ -197,7 +199,8 @@
           "mode": "name",
           "value": "wf_channels",
           "cachedResultName": "wf_channels"
-        }
+        },
+        "returnAll": true
       },
       "id": "6aa689ca-5d18-45b0-865e-ed07db1b3c95",
       "name": "3 Load wf_channels",
@@ -1123,7 +1126,7 @@
         14256,
         3008
       ],
-      "webhookId": "f26e193e-97f3-4e26-aac4-1c31fcfb15db",
+      "webhookId": "c0badee9-74d2-429d-9ad5-ab7b44812805",
       "typeVersion": 1.2,
       "alwaysOutputData": true,
       "credentials": {
@@ -1219,7 +1222,7 @@
         15584,
         2800
       ],
-      "webhookId": "8ccbd7ec-e736-42ce-b336-977ef8e979ae",
+      "webhookId": "24756c81-317a-4173-8b65-d818a17cef05",
       "typeVersion": 1.2,
       "alwaysOutputData": true,
       "credentials": {
@@ -1247,7 +1250,7 @@
         15120,
         2976
       ],
-      "webhookId": "9b73b276-4052-4cc3-9d53-f708b3ca058f",
+      "webhookId": "fd881941-3ef3-43ca-8722-0acc042a7dfe",
       "typeVersion": 1.2,
       "alwaysOutputData": true,
       "credentials": {
@@ -1275,7 +1278,7 @@
         14256,
         3200
       ],
-      "webhookId": "3b9a48e6-1d4b-4b0b-91f4-1831a8431a05",
+      "webhookId": "fc9a6960-f0b4-4e19-924d-17f0931b7bb9",
       "typeVersion": 1.2,
       "alwaysOutputData": true,
       "credentials": {
@@ -1938,7 +1941,7 @@
         12928,
         1824
       ],
-      "webhookId": "ffa144f7-c75e-403a-a3c4-883acb0fe6b3",
+      "webhookId": "546e1bd8-084f-440d-86eb-113b7767dd03",
       "typeVersion": 1.2,
       "alwaysOutputData": true,
       "credentials": {
@@ -2307,7 +2310,7 @@
         18608,
         3072
       ],
-      "webhookId": "ad10805c-ee02-4c83-8df3-4c4bf5f92074",
+      "webhookId": "6ff7bf55-5ae3-42dc-9920-917dfa97ff76",
       "typeVersion": 1.1
     },
     {
@@ -2545,7 +2548,7 @@
         14432,
         2784
       ],
-      "webhookId": "4a0b0f40-3f52-4ddc-91de-6e75bce2f50b",
+      "webhookId": "d5b9cf09-0499-419d-807e-97611f60150c",
       "typeVersion": 1.2,
       "credentials": {
         "telegramApi": {
@@ -2605,7 +2608,7 @@
         15024,
         2768
       ],
-      "webhookId": "b0e46183-bd1b-4788-aeb5-45e1a3b338d3",
+      "webhookId": "e7f4c345-5a17-472f-a832-0d20bf1cf0ff",
       "typeVersion": 1.2,
       "credentials": {
         "telegramApi": {
@@ -2687,9 +2690,8 @@
         "operation": "get",
         "dataTableId": {
           "__rl": true,
-          "mode": "list",
-          "value": "ISDyggnNSYZQ6pdJ",
-          "cachedResultUrl": "/projects/RFFzbDH5RySegsTi/datatables/ISDyggnNSYZQ6pdJ",
+          "mode": "name",
+          "value": "wf_meta_tokens",
           "cachedResultName": "wf_meta_tokens"
         },
         "returnAll": true
@@ -2876,7 +2878,7 @@
         14832,
         3040
       ],
-      "webhookId": "bf09c3b4-2d2f-4410-bfde-b2eb7c08d3be",
+      "webhookId": "1e4673f0-68e5-4da0-88e0-ab7ae147fb05",
       "typeVersion": 1.2,
       "credentials": {
         "telegramApi": {
@@ -3384,7 +3386,7 @@
       ],
       "id": "abed7097-2973-4c69-aef8-1efb0674866e",
       "name": "9.1.1.3 IG photo wait",
-      "webhookId": "50916d85-012c-4322-990c-bd87fec0d17e"
+      "webhookId": "deebb4eb-0129-4aa2-98a2-c1fe2a2e91a0"
     },
     {
       "parameters": {
@@ -3411,7 +3413,7 @@
           "combinator": "and",
           "conditions": [
             {
-              "id": "0293a786-c1a1-4340-80c8-ed934a59263f",
+              "id": "4cc00340-3a28-45c5-baed-56b6057c63cc",
               "operator": {
                 "type": "boolean",
                 "operation": "true",
@@ -3424,7 +3426,7 @@
         },
         "options": {}
       },
-      "id": "d661bb76-ac1e-4e4c-836f-493d993647ab",
+      "id": "75040536-8988-47ed-ae60-38b4ba16910a",
       "name": "5.3 Prefilter pass?",
       "type": "n8n-nodes-base.if",
       "position": [
@@ -3438,73 +3440,73 @@
         "assignments": {
           "assignments": [
             {
-              "id": "26fa61a6-27b2-4483-b02a-9912f543c243",
+              "id": "f71ff3b1-8e47-4fb7-a90e-d6c32ab186b6",
               "name": "overall_status",
               "type": "string",
               "value": "skipped"
             },
             {
-              "id": "04ebe06d-8dd0-4afc-aa6b-81d71c78b224",
+              "id": "526287cd-1d2e-485d-99f7-d899fc19cbc4",
               "name": "skip_reason",
               "type": "string",
               "value": "={{ $json.prefilter_reason || 'prefilter' }}"
             },
             {
-              "id": "9be9389e-16fe-453d-a69e-f846f487eafc",
+              "id": "46434105-637b-4ba8-aaee-68fb459c3a5a",
               "name": "tg_status",
               "type": "string",
               "value": "skipped"
             },
             {
-              "id": "2661d041-8a7a-4a5e-8289-8c8ede291928",
+              "id": "7b0a6e75-9c48-4e71-a947-76cf83829e1a",
               "name": "fb_status",
               "type": "string",
               "value": "skipped"
             },
             {
-              "id": "f48f6371-5e9c-4caa-8232-aafe31f756c2",
+              "id": "d9129dbc-a3c3-449a-b99c-df31e4db281b",
               "name": "ig_status",
               "type": "string",
               "value": "skipped"
             },
             {
-              "id": "df794923-c999-406e-8a5c-cb29aea6caa6",
+              "id": "e5789490-cff8-4b5f-a2d9-d5abd46c22be",
               "name": "vk_status",
               "type": "string",
               "value": "skipped"
             },
             {
-              "id": "37c0d6ac-6797-4b53-9978-e60ede94ad7a",
+              "id": "18f589f5-ded5-4c80-a570-a467bdd3a28d",
               "name": "tg_result",
               "type": "string",
               "value": "={{ 'skipped: ' + ($json.prefilter_reason || 'prefilter') }}"
             },
             {
-              "id": "08672051-6f4a-4adb-8bc8-c02e5096938a",
+              "id": "6399be4b-3f05-42cf-a38d-0da680c5cbb5",
               "name": "fb_result",
               "type": "string",
               "value": "={{ 'skipped: ' + ($json.prefilter_reason || 'prefilter') }}"
             },
             {
-              "id": "50efcaae-dea7-4435-95eb-0d275d51bb1c",
+              "id": "2d2ea2ba-f914-4937-a94d-9b75e028f439",
               "name": "ig_result",
               "type": "string",
               "value": "={{ 'skipped: ' + ($json.prefilter_reason || 'prefilter') }}"
             },
             {
-              "id": "78ab32f4-b018-4eaf-b592-3d012b1c1b2a",
+              "id": "806befc0-bc71-4a95-b245-791b7ba2cd99",
               "name": "vk_result",
               "type": "string",
               "value": "={{ 'skipped: ' + ($json.prefilter_reason || 'prefilter') }}"
             },
             {
-              "id": "53993a8c-7474-495a-a913-3fe03d7364eb",
+              "id": "89c7dec8-7559-4305-9780-8ab2a902378c",
               "name": "error_message",
               "type": "string",
               "value": "={{ 'Skipped by prefilter: ' + ($json.prefilter_reason || 'prefilter') }}"
             },
             {
-              "id": "f45c0cd2-0557-4ce8-bcbe-6f0d44458796",
+              "id": "dae117a3-e54d-4300-8613-61ce352641db",
               "name": "skip_post",
               "type": "boolean",
               "value": true
@@ -3514,7 +3516,7 @@
         "includeOtherFields": true,
         "options": {}
       },
-      "id": "0f1f9fca-bcd6-4748-8224-ef76a4c76148",
+      "id": "a4c97728-ae4d-414c-8ac3-3ccbd26a354b",
       "name": "5.4 Mark prefilter skip",
       "type": "n8n-nodes-base.set",
       "position": [
@@ -3528,7 +3530,7 @@
         "mode": "runOnceForEachItem",
         "jsCode": "// v2: решение публиковать/нет по оценке важности от AI.\n// Порог: importance_min_video для видео, importance_min для остальных (wf_settings).\nconst item = $input.item;\nconst j = { ...(item.json || {}) };\n\n// 6.1 собирает item из '5 SplitInBatches per post' + ответа AI, поля из 5.2 там теряются — берём их из 5.2.\nlet pre = {};\ntry { pre = $('5.2 Build AI input').item.json || {}; } catch (e) { pre = {}; }\nj.importance_filter_enabled = pre.importance_filter_enabled === true;\nj.importance_threshold = Number(pre.importance_threshold) || 0;\n\nif (j.importance_filter_enabled === true && j.skip_post !== true) {\n  const score = j.ai_importance_score;\n  const thr = Number(j.importance_threshold) || 0;\n  const reason = String(j.ai_importance_reason || '').slice(0, 150);\n\n  if (j.ai_duplicate_of_recent === true) {\n    j.skip_post = true;\n    j.skip_reason = 'duplicate of recent topic: ' + String(j.ai_topic_summary || '').slice(0, 120);\n  } else if (typeof score === 'number' && score > 0 && score < thr) {\n    j.skip_post = true;\n    j.skip_reason = `low importance ${score}/10 (min ${thr}${j.media_type === 'video' ? ', video' : ''})` + (reason ? ': ' + reason : '');\n  } else if (typeof score !== 'number') {\n    j.warnings = [...(Array.isArray(j.warnings) ? j.warnings : []), 'ai_importance_score_missing'];\n  }\n}\n\n// AI оценил низко и не написал тексты — 6.1 ставит общую причину; уточняем её.\nif (j.skip_post === true && /AI returned empty or invalid text/.test(String(j.skip_reason || '')) && typeof j.ai_importance_score === 'number') {\n  const thr = Number(j.importance_threshold) || 0;\n  if (j.ai_duplicate_of_recent === true) {\n    j.skip_reason = 'duplicate of recent topic: ' + String(j.ai_topic_summary || '').slice(0, 120);\n  } else if (j.ai_importance_score < thr) {\n    j.skip_reason = `low importance ${j.ai_importance_score}/10 (min ${thr})` + (j.ai_importance_reason ? ': ' + String(j.ai_importance_reason).slice(0, 150) : '');\n  }\n}\n\nreturn { json: j, binary: item.binary };"
       },
-      "id": "485c9ba8-0c1a-46bb-9133-b9ea25ad7ea4",
+      "id": "d22e66f8-688d-4c93-9009-6aa55f194f7b",
       "name": "6.1.0 Importance gate",
       "type": "n8n-nodes-base.code",
       "position": [
@@ -3542,7 +3544,7 @@
         "mode": "runOnceForEachItem",
         "jsCode": "// v2: счётчик опроса IG-контейнера. Повторяем, пока статус не FINISHED,\n// не ERROR/EXPIRED и не исчерпан instagram_poll_max.\nconst j = $input.item.json || {};\nconst base = $('5 SplitInBatches per post').item.json || {};\n// Счётчик несём на самом item через 9.1.2 Wait (static data может не пережить долгий Wait).\nlet prev = 0;\ntry {\n  const w = $('9.1.2 IG wait for container').item.json || {};\n  if (String(w.id || '') === String(j.id || '')) prev = Number(w.ig_poll_attempt || 0);\n} catch (e) { prev = 0; } // первая проверка фото: 9.1.2 ещё не выполнялся для этого поста\n\nconst id = String(j.id || '').trim();\nconst status = String(j.status_code || '').toUpperCase();\nconst delay = Math.max(1, Number(base.instagram_poll_delay) || 10);\n// Не дольше ~10 минут ожидания на один пост, чтобы запуск не наезжал на следующий (расписание 25 мин).\nconst max = Math.max(1, Math.min(Number(base.instagram_poll_max) || 10, Math.floor(600 / delay) || 1));\n\nconst attempt = id ? prev + 1 : 0;\nconst retry = Boolean(id) && !j.error && status !== 'ERROR' && status !== 'EXPIRED' && attempt < max;\n\nreturn {\n  json: { ...j, ig_poll_attempt: attempt, ig_poll_max: max, ig_poll_retry: retry },\n  binary: $input.item.binary,\n};"
       },
-      "id": "6f389351-7fa1-453e-aea0-edb0c67d69bf",
+      "id": "8801d902-9c42-4ac3-92c9-e4edf9719306",
       "name": "9.1.4.1 IG poll count",
       "type": "n8n-nodes-base.code",
       "position": [
@@ -3563,7 +3565,7 @@
           "combinator": "and",
           "conditions": [
             {
-              "id": "e4e22d91-fb5c-41d7-a394-257a6c0ea5f1",
+              "id": "89bde622-5f59-48f2-8cec-a90b5fecc4e6",
               "operator": {
                 "type": "boolean",
                 "operation": "true",
@@ -3576,7 +3578,7 @@
         },
         "options": {}
       },
-      "id": "8728c9a9-4d3d-4981-849e-21463adc0c82",
+      "id": "6ac1e73b-64d5-49d1-b8bd-2e46a24d70ad",
       "name": "9.1.4.2 IG poll again?",
       "type": "n8n-nodes-base.if",
       "position": [

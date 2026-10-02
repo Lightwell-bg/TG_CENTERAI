@@ -30,6 +30,7 @@ Schedule (25 мин)
 | `tg-ai-multipost_vk.json` | Workflow v1 (предыдущая версия, для истории) |
 | `tables/*.csv` | Экспорт Data Tables из n8n (`wf_settings`, `wf_channels`, `wf_prompts`, `wf_runs`, `wf_meta_tokens`) |
 | `NODES.md` | Краткое описание всех нод workflow |
+| `UPDATE.md` | Инструкция по обновлению (v1 → v2, таблицы, git, n8n) |
 | `parser-render-template/` | Parser-сервис (Node.js/Express): читает `t.me/s/<канал>`, отдаёт посты в JSON |
 | `parser-render-template/server.js` | Эндпоинты `/health`, `/posts`, `/tg-preview` |
 | `README/README.md` | Пошаговый запуск и диагностика |
@@ -82,7 +83,6 @@ Schedule (25 мин)
 3. **Credentials** — создать в n8n 5 credentials из списка выше.
 4. **Импорт workflow** — n8n → *Workflows → Import from File* → `tg-ai-multipost_vk_v2.json`. После импорта:
    - проставить credentials во всех Telegram / Google / OpenRouter / Facebook нодах;
-   - в `2.0.0 Load wf_meta_tokens` заново выбрать таблицу `wf_meta_tokens` (она привязана по ID, а не по имени);
    - убедиться, что `10.1 Update sheet row` пишет в `posts!A:AB`.
 5. **Первый тест** — один активный канал, `post_limit = 1`, включён только `publish_telegram`, *Execute Workflow*. Потом включать FB / IG / VK по одной.
 
@@ -90,88 +90,19 @@ Schedule (25 мин)
 
 ---
 
-## Переход с v1 на v2
+## Обновление
 
-Таблицы (Data Tables и Google Sheets каналов) те же — история дублей сохраняется, старые посты повторно не уйдут.
+Пошаговая инструкция: **[`UPDATE.md`](UPDATE.md)** — git, что конкретно добавить в таблицы, импорт workflow, проверка, включение, откат.
 
-1. В n8n **выключить** старый workflow `tg-ai-multipost_vk` (переключатель *Active*). Не удалять, пока v2 не проверен.
-2. *Workflows → Import from File* → `tg-ai-multipost_vk_v2.json`. Появится новый workflow `tg-ai-multipost_vk v2` (неактивный).
-3. В новом workflow:
-   - проставить credentials во всех Telegram / Google Drive / Google Sheets / OpenRouter / Facebook нодах (n8n обычно подставляет их сам, если они одни);
-   - в `2.0.0 Load wf_meta_tokens` заново выбрать таблицу `wf_meta_tokens`.
-4. По желанию добавить в `wf_settings` строки для настройки фильтра (без них работают значения по умолчанию):
-   ```text
-   importance_min,6
-   importance_min_video,4
-   ```
-   и поменять `instagram_poll_delay` → `30`, `instagram_poll_max` → `10`. При текущих 90 / 20 v2 сам ограничит ожидание ~10 минутами на пост (6 проверок), но с 30 / 10 видео публикуется быстрее.
-5. *Execute Workflow* — проверить отчёт в Telegram: пропущенные посты идут с причиной (`low importance 3/10 (min 6): …`).
-6. Включить *Active* у v2.
-
-Слишком строго режет — понизить `importance_min` (например, до 5); пропускает мусор — повысить. Оценку каждого поста видно в Google Sheets канала, столбец `result_json` → `importance`.
-
----
-
-## Как обновить локально
-
-### 1. Подтянуть изменения из GitHub
+Коротко, забрать изменения в локальный клон:
 
 ```bash
-cd TG_CENTERAI                 # папка с клоном репозитория
-git status                     # убедиться, что нет несохранённых правок
-git fetch origin
+cd TG_CENTERAI
 git checkout main
 git pull origin main
 ```
 
-Если изменения лежат в отдельной ветке (например, `claude/...`) и ещё не слиты в `main` — влить её в локальный `main` и отправить на GitHub:
-
-```bash
-git checkout main
-git pull origin main
-git fetch origin <имя-ветки>
-git merge origin/<имя-ветки>
-git push origin main
-```
-
-Либо слить ветку через Pull Request на GitHub, а локально сделать `git pull origin main`.
-
-### 2. Обновить workflow в n8n
-
-Git сам по себе n8n не обновляет — JSON нужно импортировать заново.
-
-1. В n8n открыть текущий workflow → *⋯ → Download* (резервная копия).
-2. Деактивировать старый workflow (переключатель *Active*).
-3. *Workflows → Import from File* → выбрать обновлённый `tg-ai-multipost_vk.json`.
-4. Проверить credentials в нодах и таблицу в `2.0.0 Load wf_meta_tokens`.
-5. Тестовый прогон (*Execute Workflow*), затем активировать новый и удалить/архивировать старый.
-
-Если в обновлении менялись Data Tables (новые поля / ключи) — сначала добавить их в n8n по `README/data-tables-spec.md`.
-
-### 3. Обновить parser-сервис
-
-Локально:
-
-```bash
-cd parser-render-template
-npm install                    # подтянуть зависимости, если менялся package.json
-npm start
-curl "http://localhost:3000/health"   # поле version должно совпадать с VERSION в server.js
-```
-
-На Render: закоммитить и запушить изменения в репозиторий, подключённый к Render-сервису (автодеплой), либо *Manual Deploy → Deploy latest commit*. После деплоя проверить `https://<service>.onrender.com/health`.
-
-### 4. Отправить свои изменения
-
-Если правили workflow в n8n — экспортировать его (*⋯ → Download*), заменить `tg-ai-multipost_vk.json` и закоммитить:
-
-```bash
-git add tg-ai-multipost_vk.json NODES.md
-git commit -m "Обновлён workflow: <что изменилось>"
-git push origin <ваша-ветка>
-```
-
-Перед коммитом убедиться, что в JSON нет токенов (credentials n8n в экспорт не попадают, но значения, вписанные прямо в ноды, — попадают).
+После `git pull` workflow в n8n сам не обновляется — новый JSON импортируется вручную (см. `UPDATE.md`, шаг 3).
 
 ---
 

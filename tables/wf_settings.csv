@@ -11,9 +11,16 @@ ai_model,openai/gpt-4o-mini,Имя модели в OpenRouter. Передаёт�
 ai_fallback_to_source,false,"Если `true`, при ошибке AI workflow публикует исходный текст. По умолчанию `false`."
 caption_long_mode,split,`split` — длинная подпись уходит отдельным сообщением; `truncate` — обрезается до лимита Telegram.
 reprocess_failed,false,`true` — повторно обрабатывать посты со статусом `failed`/`processing` из Sheets. По умолчанию `false`.
-instagram_poll_max,20,Максимум попыток опроса Instagram media container до признания неудачи.
-instagram_poll_delay,90,"Задержка между опросами Instagram media container, секунды."
+instagram_poll_max,10,Максимум попыток опроса Instagram media container до признания неудачи.
+instagram_poll_delay,30,"Задержка между опросами Instagram media container, секунды."
 cloudinary_cloud_name,dn3b8ezpw,Cloudinary cloud name для Instagram video storage
 cloudinary_upload_preset,n8n_instagram_video,Unsigned upload preset для загрузки видео
 cloudinary_folder,n8n/instagram,Папка Cloudinary для видео из workflow
 publish_vk,true,Мастер-выключатель VK.
+importance_filter,true,v2: отбор постов по важности (оценка AI 1–10) и префильтр коротких постов.
+importance_min,6,v2: минимальная оценка AI (1–10) для публикации поста без видео.
+importance_min_video,4,v2: минимальная оценка AI (1–10) для публикации поста с видео.
+min_text_length,80,"v2: минимальная длина текста (символов, без ссылок и хэштегов) у поста без фото/видео."
+min_text_length_media,20,v2: минимальная длина подписи у поста с фото/видео.
+topic_dedupe,true,v2: не публиковать повторно одну и ту же новость из разных каналов.
+topic_dedupe_hours,48,v2: сколько часов помнить опубликованные темы.
