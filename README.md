@@ -97,19 +97,17 @@ git checkout main
 git pull origin main
 ```
 
-Если работаете в своей ветке и хотите забрать свежий `main`:
+Если изменения лежат в отдельной ветке (например, `claude/...`) и ещё не слиты в `main` — влить её в локальный `main` и отправить на GitHub:
 
 ```bash
-git checkout <ваша-ветка>
-git merge origin/main
+git checkout main
+git pull origin main
+git fetch origin <имя-ветки>
+git merge origin/<имя-ветки>
+git push origin main
 ```
 
-Первый раз (клона ещё нет):
-
-```bash
-git clone https://github.com/Lightwell-bg/TG_CENTERAI.git TG_CENTERAI
-cd TG_CENTERAI
-```
+Либо слить ветку через Pull Request на GitHub, а локально сделать `git pull origin main`.
 
 ### 2. Обновить workflow в n8n
 
