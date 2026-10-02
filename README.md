@@ -1,6 +1,6 @@
 # TG_CENTERAI — AI-автопостинг из Telegram
 
-n8n-workflow `tg-ai-multipost_vk`: каждые 25 минут забирает новые посты из публичных Telegram-каналов, переписывает их через AI (OpenRouter) и публикует в **Telegram → Facebook Page → Instagram → VK**. Дубли отсекаются через Google Sheets (по одной таблице на канал), итог запуска пишется в `wf_runs` и отправляется отчётом в Telegram.
+n8n-workflow `tg-ai-multipost_vk` (актуальная версия — **v2**, `tg-ai-multipost_vk_v2.json`): каждые 25 минут забирает новые посты из публичных Telegram-каналов, переписывает их через AI (OpenRouter) и публикует в **Telegram → Facebook Page → Instagram → VK**. Дубли отсекаются через Google Sheets (по одной таблице на канал), итог запуска пишется в `wf_runs` и отправляется отчётом в Telegram.
 
 ```text
 Schedule (25 мин)
@@ -10,7 +10,9 @@ Schedule (25 мин)
    → parser-сервис  GET /posts
    → отсев дублей по post_uid
    → цикл по новым постам (от старых к новым)
-      → AI-рерайт (JSON: telegram_html / facebook_text / instagram_caption / skip_post)
+      → префильтр (слишком короткие посты — без AI)
+      → AI-рерайт + оценка важности 1–10 (видео — мягче) + антиповтор тем
+      → неважное / реклама / повтор → skipped
       → Telegram → Facebook → Instagram → VK
       → общий статус → строка в Google Sheets
 → итоги запуска → wf_runs + Telegram-отчёт
@@ -24,7 +26,9 @@ Schedule (25 мин)
 
 | Путь | Что это |
 |------|---------|
-| `tg-ai-multipost_vk.json` | Workflow n8n (импортируется в n8n) |
+| `tg-ai-multipost_vk_v2.json` | **Workflow n8n v2 — импортировать этот** |
+| `tg-ai-multipost_vk.json` | Workflow v1 (предыдущая версия, для истории) |
+| `tables/*.csv` | Экспорт Data Tables из n8n (`wf_settings`, `wf_channels`, `wf_prompts`, `wf_runs`, `wf_meta_tokens`) |
 | `NODES.md` | Краткое описание всех нод workflow |
 | `parser-render-template/` | Parser-сервис (Node.js/Express): читает `t.me/s/<канал>`, отдаёт посты в JSON |
 | `parser-render-template/server.js` | Эндпоинты `/health`, `/posts`, `/tg-preview` |
@@ -58,7 +62,8 @@ Schedule (25 мин)
 | `ai_model` | Модель OpenRouter (по умолчанию `openai/gpt-4o-mini`) |
 | `default_post_limit` | Сколько постов брать с канала (по умолчанию 10) |
 | `cloudinary_cloud_name`, `cloudinary_upload_preset`, `cloudinary_folder` | Cloudinary для Instagram |
-| `instagram_poll_delay` | Пауза перед проверкой IG-видео (сек) |
+| `instagram_poll_delay`, `instagram_poll_max` | Пауза между проверками IG-контейнера (сек) и макс. число проверок. Рекомендуется `30` и `10` |
+| `importance_min`, `importance_min_video`, … | v2: отбор по важности — все ключи и значения по умолчанию в [`NODES.md`](NODES.md#что-нового-в-v2) |
 
 ---
 
@@ -75,13 +80,35 @@ Schedule (25 мин)
    В production — Render.com (Build `npm install`, Start `npm start`, Health `/health`, env `PARSER_TOKEN`). Подробно: [`parser-render-template/README.md`](parser-render-template/README.md).
 2. **Data Tables** — создать 5 таблиц и заполнить (`README/data-tables-spec.md`).
 3. **Credentials** — создать в n8n 5 credentials из списка выше.
-4. **Импорт workflow** — n8n → *Workflows → Import from File* → `tg-ai-multipost_vk.json`. После импорта:
+4. **Импорт workflow** — n8n → *Workflows → Import from File* → `tg-ai-multipost_vk_v2.json`. После импорта:
    - проставить credentials во всех Telegram / Google / OpenRouter / Facebook нодах;
    - в `2.0.0 Load wf_meta_tokens` заново выбрать таблицу `wf_meta_tokens` (она привязана по ID, а не по имени);
    - убедиться, что `10.1 Update sheet row` пишет в `posts!A:AB`.
 5. **Первый тест** — один активный канал, `post_limit = 1`, включён только `publish_telegram`, *Execute Workflow*. Потом включать FB / IG / VK по одной.
 
 Пошагово и с диагностикой: [`README/README.md`](README/README.md).
+
+---
+
+## Переход с v1 на v2
+
+Таблицы (Data Tables и Google Sheets каналов) те же — история дублей сохраняется, старые посты повторно не уйдут.
+
+1. В n8n **выключить** старый workflow `tg-ai-multipost_vk` (переключатель *Active*). Не удалять, пока v2 не проверен.
+2. *Workflows → Import from File* → `tg-ai-multipost_vk_v2.json`. Появится новый workflow `tg-ai-multipost_vk v2` (неактивный).
+3. В новом workflow:
+   - проставить credentials во всех Telegram / Google Drive / Google Sheets / OpenRouter / Facebook нодах (n8n обычно подставляет их сам, если они одни);
+   - в `2.0.0 Load wf_meta_tokens` заново выбрать таблицу `wf_meta_tokens`.
+4. По желанию добавить в `wf_settings` строки для настройки фильтра (без них работают значения по умолчанию):
+   ```text
+   importance_min,6
+   importance_min_video,4
+   ```
+   и поменять `instagram_poll_delay` → `30`, `instagram_poll_max` → `10` (сейчас 90 и 20 — до 30 минут ожидания на одно видео).
+5. *Execute Workflow* — проверить отчёт в Telegram: пропущенные посты идут с причиной (`low importance 3/10 (min 6): …`).
+6. Включить *Active* у v2.
+
+Слишком строго режет — понизить `importance_min` (например, до 5); пропускает мусор — повысить. Оценку каждого поста видно в Google Sheets канала, столбец `result_json` → `importance`.
 
 ---
 
@@ -150,4 +177,4 @@ git push origin <ваша-ветка>
 
 ## Безопасность
 
-Не хранить в репозитории, Markdown, скриншотах и чатах: токен Telegram-бота, ключ OpenRouter, Facebook Page Access Token, VK user token, Cloudinary API Secret, `PARSER_TOKEN`. Все токены соцсетей живут в Data Table `wf_meta_tokens`, ключи API — в Credentials n8n. Если токен засветился — перевыпустить.
+Не хранить в репозитории, Markdown, скриншотах и чатах: токен Telegram-бота, ключ OpenRouter, Facebook Page Access Token, VK user token, Cloudinary API Secret, `PARSER_TOKEN`. Все токены соцсетей живут в Data Table `wf_meta_tokens`, ключи API — в Credentials n8n. Если токен засветился — перевыпустить. При экспорте `wf_meta_tokens` в `tables/` колонку `access_token` очищать перед коммитом.
