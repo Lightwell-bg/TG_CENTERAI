@@ -104,7 +104,7 @@ Schedule (25 мин)
    importance_min,6
    importance_min_video,4
    ```
-   и поменять `instagram_poll_delay` → `30`, `instagram_poll_max` → `10` (сейчас 90 и 20 — до 30 минут ожидания на одно видео).
+   и поменять `instagram_poll_delay` → `30`, `instagram_poll_max` → `10`. При текущих 90 / 20 v2 сам ограничит ожидание ~10 минутами на пост (6 проверок), но с 30 / 10 видео публикуется быстрее.
 5. *Execute Workflow* — проверить отчёт в Telegram: пропущенные посты идут с причиной (`low importance 3/10 (min 6): …`).
 6. Включить *Active* у v2.
 
