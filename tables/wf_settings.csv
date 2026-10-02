@@ -1,0 +1,19 @@
+﻿key,value,note
+parser_url,https://tg-public-channel-parser.onrender.com,Базовый URL parser-сервиса на Render. Без trailing slash.
+parser_token,,Токен для header `X-Parser-Token`. Должен совпадать с `PARSER_TOKEN` на Render.
+gdrive_folder_id,1QTKKeZDsyzO7tZ25Pv8Ics5l6Cz9lx2v,"ID папки Google Drive, в которой workflow создаёт и ищет Sheets-файлы по каналам."
+default_post_limit,3,"Сколько последних постов запрашивать у parser, если у канала не задан собственный лимит. "
+report_chat_id,-1003737019955,Chat ID закрытой Telegram-группы для отчёта. Бот должен быть добавлен в группу.
+publish_telegram,true,Глобальный мастер-выключатель публикации в Telegram.
+publish_facebook,true,Мастер-выключатель Facebook.
+publish_instagram,true,Мастер-выключатель Instagram.
+ai_model,openai/gpt-4o-mini,Имя модели в OpenRouter. Передаётся в `lmChatOpenRouter`
+ai_fallback_to_source,false,"Если `true`, при ошибке AI workflow публикует исходный текст. По умолчанию `false`."
+caption_long_mode,split,`split` — длинная подпись уходит отдельным сообщением; `truncate` — обрезается до лимита Telegram.
+reprocess_failed,false,`true` — повторно обрабатывать посты со статусом `failed`/`processing` из Sheets. По умолчанию `false`.
+instagram_poll_max,20,Максимум попыток опроса Instagram media container до признания неудачи.
+instagram_poll_delay,90,"Задержка между опросами Instagram media container, секунды."
+cloudinary_cloud_name,dn3b8ezpw,Cloudinary cloud name для Instagram video storage
+cloudinary_upload_preset,n8n_instagram_video,Unsigned upload preset для загрузки видео
+cloudinary_folder,n8n/instagram,Папка Cloudinary для видео из workflow
+publish_vk,true,Мастер-выключатель VK.
