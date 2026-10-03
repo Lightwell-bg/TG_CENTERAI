@@ -5,7 +5,7 @@ const cheerio = require('cheerio');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const PARSER_TOKEN = (process.env.PARSER_TOKEN || '').trim();
-const VERSION = 'parser-v9-rich-links';
+const VERSION = 'parser-v10-video-fix';
 
 // Optional shared-secret guard. If PARSER_TOKEN env var is set, every request to /posts
 // must pass the same value either via the X-Parser-Token header or ?token= query param.
@@ -175,6 +175,20 @@ app.get('/posts', requireToken, async (req, res) => {
       'Accept-Language': 'en-US,en;q=0.9,ru;q=0.8',
     };
 
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const getEmbedWithRetry = async (embedUrl) => {
+      let lastErr;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          return await axios.get(embedUrl, { timeout: 20000, headers: embedHeaders });
+        } catch (e) {
+          lastErr = e;
+          await sleep(1500 * (attempt + 1));
+        }
+      }
+      throw lastErr;
+    };
+
     const fetchVideoFromEmbed = async (channelName, postId, postUrlToSkip) => {
       if (!channelName || !postId) return '';
 
@@ -182,10 +196,7 @@ app.get('/posts', requireToken, async (req, res) => {
         const embedUrl = `https://telegram.me/${encodeURIComponent(channelName)}/${encodeURIComponent(
           postId
         )}?embed=1`;
-        const embedResp = await axios.get(embedUrl, {
-          timeout: 12000,
-          headers: embedHeaders,
-        });
+        const embedResp = await getEmbedWithRetry(embedUrl);
 
         const $$ = cheerio.load(embedResp.data);
         const candidates = [
@@ -212,10 +223,7 @@ app.get('/posts', requireToken, async (req, res) => {
         const embedUrl = `https://telegram.me/${encodeURIComponent(channelName)}/${encodeURIComponent(
           postId
         )}?embed=1`;
-        const embedResp = await axios.get(embedUrl, {
-          timeout: 12000,
-          headers: embedHeaders,
-        });
+        const embedResp = await getEmbedWithRetry(embedUrl);
         const $$ = cheerio.load(embedResp.data);
         const og = normalizeUrl($$('meta[property="og:image"]').attr('content') || '');
         return og || '';
@@ -240,7 +248,10 @@ app.get('/posts', requireToken, async (req, res) => {
       const viewsRaw = $(el).find('.tgme_widget_message_views').first().text().trim();
       const views = Number((viewsRaw || '0').replace(/[^\d]/g, '')) || 0;
 
-      const datetime = $(el).find('time').attr('datetime') || '';
+      const datetime =
+        $(el).find('.tgme_widget_message_date time').attr('datetime') ||
+        $(el).find('time[datetime]').first().attr('datetime') ||
+        '';
       const date = datetime || null;
       const dateTs = Date.parse(datetime || '') || 0;
 
@@ -249,6 +260,11 @@ app.get('/posts', requireToken, async (req, res) => {
       const style = photoWrap.attr('style') || '';
       const photoMatch = style.match(/url\('([^']+)'\)/);
       if (photoMatch && photoMatch[1]) photoUrl = photoMatch[1];
+      if (!photoUrl) {
+        const thumbStyle = $(el).find('.tgme_widget_message_video_thumb').first().attr('style') || '';
+        const thumbMatch = thumbStyle.match(/url\('([^']+)'\)/);
+        if (thumbMatch && thumbMatch[1]) photoUrl = thumbMatch[1];
+      }
 
       const sourceSrc = normalizeUrl($(el).find('video source').attr('src') || '');
       const inlineVideoSrc = normalizeUrl($(el).find('video').attr('src') || '');

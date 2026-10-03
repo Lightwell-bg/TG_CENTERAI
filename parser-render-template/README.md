@@ -16,7 +16,7 @@
 Проверка работоспособности. Всегда открыта (даже если включён `PARSER_TOKEN`), чтобы Render mог делать health-check.
 
 ```json
-{ "ok": true, "version": "parser-v9-rich-links", "tokenProtected": false }
+{ "ok": true, "version": "parser-v10-video-fix", "tokenProtected": false }
 ```
 
 ### `GET /posts?channel=<channel>&limit=<n>&before=<id>`
