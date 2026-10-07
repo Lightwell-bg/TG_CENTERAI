@@ -5,7 +5,7 @@ const cheerio = require('cheerio');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const PARSER_TOKEN = (process.env.PARSER_TOKEN || '').trim();
-const VERSION = 'parser-v12-empty-post-embed-fallback';
+const VERSION = 'parser-v12.1-og-description-fallback';
 
 // Optional shared-secret guard. If PARSER_TOKEN env var is set, every request to /posts
 // must pass the same value either via the X-Parser-Token header or ?token= query param.
@@ -516,6 +516,18 @@ app.get('/posts', requireToken, async (req, res) => {
             post.text_plain = embedRich.text_plain;
             post.text_html = embedRich.text_html;
             post.links = embedRich.links;
+          } else {
+            // Fallback: for album/media posts Telegram often hides .tgme_widget_message_text
+            // but the post caption is available in og:description / twitter:description meta tags
+            const ogDesc = String($$('meta[property="og:description"]').attr('content') || '').trim();
+            const twDesc = String($$('meta[name="twitter:description"]').attr('content') || '').trim();
+            const metaText = ogDesc || twDesc;
+            if (metaText) {
+              post.text = metaText;
+              post.text_plain = metaText;
+              post.text_html = metaText;
+              post.links = [];
+            }
           }
           // Also grab photo from embed og:image if still missing
           if (!String(post.photo_url || '').trim()) {
