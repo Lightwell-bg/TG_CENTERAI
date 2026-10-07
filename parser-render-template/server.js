@@ -5,7 +5,7 @@ const cheerio = require('cheerio');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const PARSER_TOKEN = (process.env.PARSER_TOKEN || '').trim();
-const VERSION = 'parser-v11-album-support';
+const VERSION = 'parser-v12-empty-post-embed-fallback';
 
 // Optional shared-secret guard. If PARSER_TOKEN env var is set, every request to /posts
 // must pass the same value either via the X-Parser-Token header or ?token= query param.
@@ -467,33 +467,62 @@ app.get('/posts', requireToken, async (req, res) => {
     const latest = sorted.slice(0, limit);
 
     // ---------------------------------------------------------------------------
-    // Enrich: fetch video URLs via embed page when not already present in HTML.
-    // For album posts (is_album=true) we call fetchAllVideosFromEmbed to get ALL
-    // videos; for single-video posts we use the cheaper fetchVideoFromEmbed.
+    // Enrich: fetch video URLs and text via embed page when not found in HTML.
+    //
+    // WHY we need this:
+    // telegram.me/s/<channel> renders album/grouped-media posts as empty HTML —
+    // the videos are loaded by JS player, <video> tags are absent, and sometimes
+    // even has_video_hint is false. The embed URL (?embed=1) is the only reliable
+    // source for these posts.
+    //
+    // Strategy:
+    // 1. Any post that has no text AND no media → probe embed unconditionally.
+    //    This catches "completely empty" album posts that the /s/ page hides.
+    // 2. Posts with has_video_hint but no video URL found in HTML → embed.
+    // 3. Album posts with fewer videos than album_size → embed for the full set.
     // ---------------------------------------------------------------------------
     for (const post of latest) {
-      if (post.has_video_hint && post.video_urls.length === 0) {
-        // No video found in HTML at all — try embed (handles both single and album)
-        if (post.is_album) {
-          const allVideos = await fetchAllVideosFromEmbed(channel, post.id, post.post_url);
-          if (allVideos.length > 0) {
-            post.video_urls = allVideos;
-            post.video_url = allVideos[0];
-          }
-        } else {
-          const singleVideo = await fetchVideoFromEmbed(channel, post.id, post.post_url);
-          if (singleVideo) {
-            post.video_url = singleVideo;
-            post.video_urls = [singleVideo];
-          }
+      const hasText = String(post.text || '').trim().length > 0;
+      const hasMedia = post.video_urls.length > 0 || String(post.photo_url || '').trim();
+      const needsEmbed =
+        (!hasText && !hasMedia) ||                                    // completely empty post
+        (post.has_video_hint && post.video_urls.length === 0) ||     // video hinted but not found
+        (post.is_album && post.video_urls.length < post.album_size); // album with missing videos
+
+      if (!needsEmbed) continue;
+
+      // Always try fetchAllVideosFromEmbed — it collects all <video>/<source>/<a> elements,
+      // which gives us both single-video and multi-video results correctly.
+      const allVideos = await fetchAllVideosFromEmbed(channel, post.id, post.post_url);
+      if (allVideos.length > 0) {
+        post.video_urls = allVideos;
+        post.video_url = allVideos[0];
+        // If album_size was 1 but we got multiple videos, correct it
+        if (allVideos.length > 1) {
+          post.is_album = true;
+          post.album_size = allVideos.length;
         }
-      } else if (post.has_video_hint && post.is_album && post.video_urls.length < post.album_size) {
-        // Album but we got fewer videos from HTML than expected — try embed for the full set
-        const allVideos = await fetchAllVideosFromEmbed(channel, post.id, post.post_url);
-        if (allVideos.length > post.video_urls.length) {
-          post.video_urls = allVideos;
-          post.video_url = allVideos[0];
-        }
+      }
+
+      // Also try to get text from embed when it was empty in /s/ HTML
+      if (!hasText) {
+        try {
+          const embedUrl = `https://telegram.me/${encodeURIComponent(channel)}/${encodeURIComponent(post.id)}?embed=1`;
+          const embedResp = await getEmbedWithRetry(embedUrl);
+          const $$ = cheerio.load(embedResp.data);
+          const embedRich = parseRichText($$('.tgme_widget_message_text').first());
+          if (embedRich.text) {
+            post.text = embedRich.text;
+            post.text_plain = embedRich.text_plain;
+            post.text_html = embedRich.text_html;
+            post.links = embedRich.links;
+          }
+          // Also grab photo from embed og:image if still missing
+          if (!String(post.photo_url || '').trim()) {
+            const ogImage = String($$('meta[property="og:image"]').attr('content') || '').trim();
+            if (ogImage) post.photo_url = ogImage;
+          }
+        } catch (_e) { /* ignore */ }
       }
     }
 
