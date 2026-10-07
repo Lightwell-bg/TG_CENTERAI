@@ -5,7 +5,7 @@ const cheerio = require('cheerio');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const PARSER_TOKEN = (process.env.PARSER_TOKEN || '').trim();
-const VERSION = 'parser-v12.1-og-description-fallback';
+const VERSION = 'parser-v12.2-t-me-url-fix';
 
 // Optional shared-secret guard. If PARSER_TOKEN env var is set, every request to /posts
 // must pass the same value either via the X-Parser-Token header or ?token= query param.
@@ -130,7 +130,7 @@ app.get('/posts', requireToken, async (req, res) => {
     }
 
     const channel = rawChannel
-      .replace(/^https?:\/\/telegram\.me\//i, '')
+      .replace(/^https?:\/\/(?:telegram\.me|t\.me)\//i, '')
       .replace(/^@/, '')
       .replace(/^s\//, '')
       .split('/')[0]
