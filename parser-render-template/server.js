@@ -5,7 +5,7 @@ const cheerio = require('cheerio');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const PARSER_TOKEN = (process.env.PARSER_TOKEN || '').trim();
-const VERSION = 'parser-v10-video-fix';
+const VERSION = 'parser-v11-album-support';
 
 // Optional shared-secret guard. If PARSER_TOKEN env var is set, every request to /posts
 // must pass the same value either via the X-Parser-Token header or ?token= query param.
@@ -189,6 +189,10 @@ app.get('/posts', requireToken, async (req, res) => {
       throw lastErr;
     };
 
+    /**
+     * Fetch the first direct video URL from embed page (for single-video posts).
+     * Returns '' when nothing is found.
+     */
     const fetchVideoFromEmbed = async (channelName, postId, postUrlToSkip) => {
       if (!channelName || !postId) return '';
 
@@ -199,20 +203,73 @@ app.get('/posts', requireToken, async (req, res) => {
         const embedResp = await getEmbedWithRetry(embedUrl);
 
         const $$ = cheerio.load(embedResp.data);
-        const candidates = [
+        // Collect meta-level candidates first (single URL from OG tags)
+        const metaCandidates = [
           normalizeUrl($$('meta[property="og:video"]').attr('content') || ''),
           normalizeUrl($$('meta[name="twitter:player:stream"]').attr('content') || ''),
-          normalizeUrl($$('video source').attr('src') || ''),
-          normalizeUrl($$('video').attr('src') || ''),
-          normalizeUrl($$('a[href*=".mp4"]').first().attr('href') || ''),
-          normalizeUrl($$('a[href*="/file/"]').first().attr('href') || ''),
-        ]
-          .filter(Boolean)
-          .filter((v) => normalizeUrl(v) !== normalizeUrl(postUrlToSkip));
+        ].filter(Boolean).filter((v) => v !== normalizeUrl(postUrlToSkip));
 
-        return candidates.find((v) => isDirectVideoUrl(v)) || '';
+        // Then inline <video> / <source> / <a> elements (may be multiple in an album embed)
+        const inlineCandidates = [];
+        $$('video source[src], video[src]').each((_, v) => {
+          const src = normalizeUrl($$(v).attr('src') || '');
+          if (src) inlineCandidates.push(src);
+        });
+        $$('a[href*=".mp4"], a[href*="/file/"]').each((_, a) => {
+          const href = normalizeUrl($$(a).attr('href') || '');
+          if (href) inlineCandidates.push(href);
+        });
+
+        const allCandidates = [...metaCandidates, ...inlineCandidates]
+          .filter(Boolean)
+          .filter((v) => v !== normalizeUrl(postUrlToSkip));
+
+        return allCandidates.find((v) => isDirectVideoUrl(v)) || '';
       } catch (_e) {
         return '';
+      }
+    };
+
+    /**
+     * Fetch ALL direct video URLs from embed page (for album/grouped-media posts).
+     * Returns array (may be empty).
+     */
+    const fetchAllVideosFromEmbed = async (channelName, postId, postUrlToSkip) => {
+      if (!channelName || !postId) return [];
+
+      try {
+        const embedUrl = `https://telegram.me/${encodeURIComponent(channelName)}/${encodeURIComponent(
+          postId
+        )}?embed=1`;
+        const embedResp = await getEmbedWithRetry(embedUrl);
+
+        const $$ = cheerio.load(embedResp.data);
+        const seen = new Set();
+        const results = [];
+
+        const add = (url) => {
+          const v = normalizeUrl(url || '');
+          if (!v) return;
+          if (v === normalizeUrl(postUrlToSkip)) return;
+          if (seen.has(v)) return;
+          if (!isDirectVideoUrl(v)) return;
+          seen.add(v);
+          results.push(v);
+        };
+
+        // Meta tags (usually single video reference)
+        add($$('meta[property="og:video"]').attr('content') || '');
+        add($$('meta[name="twitter:player:stream"]').attr('content') || '');
+
+        // All inline video/source/a elements — album embeds contain one per video
+        $$('video source[src]').each((_, el) => add($$(el).attr('src') || ''));
+        $$('video[src]').each((_, el) => add($$(el).attr('src') || ''));
+        $$('a[href*=".mp4"]').each((_, el) => add($$(el).attr('href') || ''));
+        $$('a[href*="/file/"]').each((_, el) => add($$(el).attr('href') || ''));
+
+        return results;
+      } catch (_e) {
+        return [];
       }
     };
 
@@ -232,6 +289,13 @@ app.get('/posts', requireToken, async (req, res) => {
       }
     };
 
+    // ---------------------------------------------------------------------------
+    // Pass 1: collect raw data from each .tgme_widget_message_wrap element.
+    // Album posts (grouped media) produce MULTIPLE wraps with the same post id.
+    // We collect all of them first, then merge by id in Pass 2.
+    // ---------------------------------------------------------------------------
+    const rawItems = [];
+
     $('.tgme_widget_message_wrap').each((_, el) => {
       const msg = $(el).find('.tgme_widget_message');
       const dataPost = msg.attr('data-post') || '';
@@ -243,6 +307,7 @@ app.get('/posts', requireToken, async (req, res) => {
       const idFromUrl = (postUrl.match(/\/(\d+)(?:\?|$)/) || [])[1];
       const id = Number(idFromDataPost || idFromUrl || 0) || null;
 
+      // Text — may be empty for non-last elements of an album
       const rich = parseRichText($(el).find('.tgme_widget_message_text').first());
 
       const viewsRaw = $(el).find('.tgme_widget_message_views').first().text().trim();
@@ -255,6 +320,7 @@ app.get('/posts', requireToken, async (req, res) => {
       const date = datetime || null;
       const dateTs = Date.parse(datetime || '') || 0;
 
+      // Photo — from photo wrap style or video thumbnail style
       let photoUrl = '';
       const photoWrap = $(el).find('.tgme_widget_message_photo_wrap').first();
       const style = photoWrap.attr('style') || '';
@@ -266,6 +332,7 @@ app.get('/posts', requireToken, async (req, res) => {
         if (thumbMatch && thumbMatch[1]) photoUrl = thumbMatch[1];
       }
 
+      // Video candidates from inline HTML of this wrap element
       const sourceSrc = normalizeUrl($(el).find('video source').attr('src') || '');
       const inlineVideoSrc = normalizeUrl($(el).find('video').attr('src') || '');
       const playerHref = normalizeUrl(
@@ -295,22 +362,102 @@ app.get('/posts', requireToken, async (req, res) => {
         $(el).find('.tgme_widget_message_video_wrap').length > 0 ||
         $(el).find('.tgme_widget_message_video_player').length > 0;
 
-      posts.push({
+      rawItems.push({
         id,
+        postUrl,
+        rich,
+        views,
+        date,
+        dateTs,
+        photoUrl,
+        videoUrl,
+        hasVideoHint,
+      });
+    });
+
+    // ---------------------------------------------------------------------------
+    // Pass 2: merge album elements that share the same post id.
+    // For each unique id we build one merged post:
+    //   - text / links: take from whichever element has non-empty text
+    //   - views / date: take from first element that has them
+    //   - photo_url: first non-empty photo found across all elements
+    //   - video_urls: all distinct direct video URLs across all elements (album support)
+    //   - has_video_hint: OR across all elements
+    // Order of rawItems is DOM order (top → bottom), which matches Telegram's layout.
+    // ---------------------------------------------------------------------------
+    const mergedMap = new Map(); // id → merged post object
+
+    for (const item of rawItems) {
+      const key = item.id;
+
+      if (!mergedMap.has(key)) {
+        mergedMap.set(key, {
+          id: item.id,
+          postUrl: item.postUrl,
+          rich: item.rich.text ? item.rich : null, // will be filled on first non-empty text
+          views: item.views,
+          date: item.date,
+          dateTs: item.dateTs,
+          photoUrl: item.photoUrl,
+          videoUrls: item.videoUrl ? [item.videoUrl] : [],
+          hasVideoHint: item.hasVideoHint,
+          albumSize: 1,
+        });
+      } else {
+        const merged = mergedMap.get(key);
+        merged.albumSize += 1;
+
+        // Take the text/links from whichever element has content (last non-empty wins,
+        // but typically it's the LAST element in an album that carries the caption).
+        if (item.rich.text) merged.rich = item.rich;
+
+        // Take views from the element that has them (usually the last/main one)
+        if (item.views > 0 && merged.views === 0) merged.views = item.views;
+
+        // Take date from first non-null
+        if (!merged.date && item.date) {
+          merged.date = item.date;
+          merged.dateTs = item.dateTs;
+        }
+
+        // First non-empty photo
+        if (!merged.photoUrl && item.photoUrl) merged.photoUrl = item.photoUrl;
+
+        // Collect all distinct video URLs across album elements
+        if (item.videoUrl && !merged.videoUrls.includes(item.videoUrl)) {
+          merged.videoUrls.push(item.videoUrl);
+        }
+
+        // has_video_hint: OR across all elements
+        if (item.hasVideoHint) merged.hasVideoHint = true;
+      }
+    }
+
+    for (const merged of mergedMap.values()) {
+      const rich = merged.rich || { text: '', text_plain: '', text_html: '', links: [] };
+      const isAlbum = merged.albumSize > 1;
+
+      posts.push({
+        id: merged.id,
         text: rich.text,
         text_plain: rich.text_plain,
         text_html: rich.text_html,
         links: rich.links,
-        views,
-        date,
-        dateTs,
+        views: merged.views,
+        date: merged.date,
+        dateTs: merged.dateTs,
         author: channel,
-        photo_url: photoUrl || '',
-        video_url: videoUrl || '',
-        post_url: postUrl,
-        has_video_hint: hasVideoHint,
+        photo_url: merged.photoUrl || '',
+        // video_url: first video for backwards compatibility with existing n8n nodes
+        video_url: merged.videoUrls[0] || '',
+        // video_urls: full list for album posts (may contain 1+ items)
+        video_urls: merged.videoUrls,
+        post_url: merged.postUrl,
+        has_video_hint: merged.hasVideoHint,
+        is_album: isAlbum,
+        album_size: merged.albumSize,
       });
-    });
+    }
 
     const sorted = posts.sort((a, b) => {
       if ((b.id || 0) !== (a.id || 0)) return (b.id || 0) - (a.id || 0);
@@ -319,9 +466,34 @@ app.get('/posts', requireToken, async (req, res) => {
 
     const latest = sorted.slice(0, limit);
 
+    // ---------------------------------------------------------------------------
+    // Enrich: fetch video URLs via embed page when not already present in HTML.
+    // For album posts (is_album=true) we call fetchAllVideosFromEmbed to get ALL
+    // videos; for single-video posts we use the cheaper fetchVideoFromEmbed.
+    // ---------------------------------------------------------------------------
     for (const post of latest) {
-      if (!post.video_url && post.has_video_hint) {
-        post.video_url = await fetchVideoFromEmbed(channel, post.id, post.post_url);
+      if (post.has_video_hint && post.video_urls.length === 0) {
+        // No video found in HTML at all — try embed (handles both single and album)
+        if (post.is_album) {
+          const allVideos = await fetchAllVideosFromEmbed(channel, post.id, post.post_url);
+          if (allVideos.length > 0) {
+            post.video_urls = allVideos;
+            post.video_url = allVideos[0];
+          }
+        } else {
+          const singleVideo = await fetchVideoFromEmbed(channel, post.id, post.post_url);
+          if (singleVideo) {
+            post.video_url = singleVideo;
+            post.video_urls = [singleVideo];
+          }
+        }
+      } else if (post.has_video_hint && post.is_album && post.video_urls.length < post.album_size) {
+        // Album but we got fewer videos from HTML than expected — try embed for the full set
+        const allVideos = await fetchAllVideosFromEmbed(channel, post.id, post.post_url);
+        if (allVideos.length > post.video_urls.length) {
+          post.video_urls = allVideos;
+          post.video_url = allVideos[0];
+        }
       }
     }
 
@@ -335,7 +507,8 @@ app.get('/posts', requireToken, async (req, res) => {
     }
 
     const enriched = latest.map(({ dateTs: _dateTs, has_video_hint: _hint, ...rest }) => {
-      const mediaType = rest.video_url ? 'video' : rest.photo_url ? 'photo' : 'none';
+      const hasVideo = rest.video_url || (rest.video_urls && rest.video_urls.length > 0);
+      const mediaType = hasVideo ? 'video' : rest.photo_url ? 'photo' : 'none';
       const postUid = `${channel}_${rest.id}`;
       return { ...rest, media_type: mediaType, post_uid: postUid };
     });
