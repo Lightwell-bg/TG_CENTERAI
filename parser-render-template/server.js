@@ -5,7 +5,7 @@ const cheerio = require('cheerio');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const PARSER_TOKEN = (process.env.PARSER_TOKEN || '').trim();
-const VERSION = 'parser-v12.2-t-me-url-fix';
+const VERSION = 'parser-v12.3-debug-embed';
 
 // Optional shared-secret guard. If PARSER_TOKEN env var is set, every request to /posts
 // must pass the same value either via the X-Parser-Token header or ?token= query param.
@@ -117,6 +117,32 @@ function parseRichText(textEl) {
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, version: VERSION, tokenProtected: Boolean(PARSER_TOKEN) });
+});
+
+// Diagnostic: shows what Telegram returns to THIS server for an embed page.
+app.get('/debug-embed', requireToken, async (req, res) => {
+  const channel = String(req.query.channel || '').replace(/^https?:\/\/(?:telegram\.me|t\.me)\//i, '').replace(/^@/, '').split('/')[0].trim();
+  const id = String(req.query.id || '').trim();
+  if (!channel || !id) return res.status(400).json({ error: 'channel and id required' });
+  try {
+    const url = `https://telegram.me/${encodeURIComponent(channel)}/${encodeURIComponent(id)}?embed=1`;
+    const r = await axios.get(url, {
+      timeout: 20000,
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', 'Accept-Language': 'en-US,en;q=0.9,ru;q=0.8' },
+    });
+    const $ = cheerio.load(r.data);
+    res.json({
+      status: r.status,
+      length: String(r.data).length,
+      og_description: $('meta[property="og:description"]').attr('content') || '',
+      og_image: $('meta[property="og:image"]').attr('content') || '',
+      has_text_el: $('.tgme_widget_message_text').length,
+      has_video_el: $('video').length,
+      body_start: String(r.data).slice(0, 1500),
+    });
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || e) });
+  }
 });
 
 app.get('/posts', requireToken, async (req, res) => {
